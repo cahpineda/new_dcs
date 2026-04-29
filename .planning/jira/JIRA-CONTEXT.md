@@ -1,10 +1,11 @@
 ---
 requested_issue_key: ACA-2962
-hierarchy_mode: up
+ticket_status: In Progress
+hierarchy_mode: all
 generated: 2026-04-29
 ---
 
-> **TASK SCOPE — IMPLEMENT ONLY:** `ACA-2962` (REQUESTED). All other issues in this file (parent hierarchy, related issues) are **reference context only** — they explain the WHY and HOW, but must NOT be planned or implemented.
+> **TASK SCOPE — IMPLEMENT ONLY:** `ACA-2962` (REQUESTED). All other issues in this file (parent hierarchy, related issues, same-epic issues) are **reference context only** — they explain the WHY and HOW, but must NOT be planned or implemented.
 
 # ACA-2962: Analyze cloud2 monolith via project2context — full structural, integration and multitenancy audit (REQUESTED)
 
@@ -15,7 +16,6 @@ generated: 2026-04-29
 **Reporter:** Carlos Hurtado (carlos.hurtado@inkaviation.com)
 **Created:** 2026-04-29
 **Updated:** 2026-04-29
-**Estimate:** 6h
 
 ---
 
@@ -74,7 +74,6 @@ Using the `project2context` MCP connected to the cloud2 repository, perform an e
 ---
 
 **Acceptance Criteria**
-
 - [ ] cloud2 fully traversed with `project2context` with no relevant functional areas left unanalyzed
 - [ ] Candidate module list defined with justification grounded in actual code groupings
 - [ ] Each module has a documented FE / BE / DB scope sourced directly from the repository
@@ -95,13 +94,33 @@ A structured analysis document is delivered covering all sections above, sourced
 
 ## Hierarchy
 
-### Parent Feature: ACA-2961
+The complete hierarchy from Feature to this issue: Feature → Sub-task
+
+### Feature: ACA-2961
 
 **Summary:** DCS System Rewrite Strategy — Modular Architecture with Independent Commercialization
 **Status:** In Progress
 **Type:** Feature
 
-**Description:** Parent feature driving the full modular rewrite strategy for the DCS system. This sub-task (ACA-2962) provides the foundational analysis that feeds into the overall rewrite plan.
+**Description:** Define a comprehensive rewrite strategy for the DCS (Departure Control System) currently implemented as a PHP monolith in cloud2, decomposing it into independently deployable and commercially sellable modules. Each module must have its own defined scope covering Frontend (React), Backend (API/services), and Database (schema ownership), enabling Anthropic to license and deploy individual modules to clients without requiring the full system.
+
+This strategy must be grounded in the actual cloud2 codebase — analyzed via `project2context` — to ensure the module boundaries, dependencies, and data flows reflect reality and not assumptions.
+
+**Scope:**
+- Analyze the cloud2 monolith using `project2context` to identify functional domains, bounded contexts, and existing module boundaries
+- Identify and define each DCS module (e.g. Check-in, Seat Plan, Boarding, Flight Management, Baggage, etc.) based on actual code structure
+- For each module, define: FE components/pages, BE services/endpoints, and DB schema ownership
+- Map inter-module dependencies and data contracts (shared entities, cross-module API calls)
+- Define a phased migration/rewrite roadmap that allows modules to be extracted and delivered incrementally
+- Establish commercialization packaging per module (what's included, what APIs are exposed to clients)
+
+**Acceptance Criteria:**
+- cloud2 codebase fully analyzed and functional domains documented
+- Complete list of DCS modules defined with clear boundaries
+- Each module has a defined FE + BE + DB scope
+- Inter-module dependency map produced
+- Phased rewrite roadmap created with priority order and estimated complexity per module
+- Strategy document reviewed and approved by technical lead
 
 ### ACA-2962 (REQUESTED)
 
@@ -111,44 +130,80 @@ A structured analysis document is delivered covering all sections above, sourced
 **Priority:** Normal
 
 **Labels:** `ink-monitor`
-**Components:** —
-**Fix Versions:** —
+**Components:** Departure Control System (Desktop) - DCS
+
+---
+
+## Related Issues
+
+### Subtasks
+
+No subtasks.
+
+### Links
+
+No linked issues.
+
+### Other Issues from Same Epic
+
+No epic link found for this issue — same-epic issues not available.
 
 ---
 
 ## Important History
 
-### 2026-04-29 — Label added
+### 2026-04-29 18:49 - Label Added
 
-**ink-monitor** label added
+**Change:** ink-monitor label added
 **By:** Carlos Hurtado
 
 ---
 
-### 2026-04-29 — Description added
+### 2026-04-29 18:22 - Description Added
 
-Full scope and acceptance criteria written.
+**Change:** Full task description written with 7-section scope, acceptance criteria, and definition of done
 **By:** Carlos Hurtado
 
 ---
 
-### 2026-04-29 — Status Change
+### 2026-04-29 18:21 - Status Change
 
-**From:** Technical Review → To Do → **In Progress**
+**From:** To Do → **To:** In Progress
 **By:** Carlos Hurtado
 
 ---
 
-### 2026-04-29 — Assignment
+### 2026-04-29 18:21 - Status Change
+
+**From:** Technical Review → **To:** To Do
+**By:** Carlos Hurtado
+
+---
+
+### 2026-04-29 18:21 - Time Estimate Set
+
+**Change:** Original estimate set to 6h (21600s)
+**By:** Carlos Hurtado
+
+---
+
+### 2026-04-29 18:21 - Assignment
 
 **Assigned to:** Carlos Hurtado
 **By:** Carlos Hurtado
 
 ---
 
-### 2026-04-29 — Parent set
+### 2026-04-29 18:21 - Summary Corrected
 
-**Parent:** ACA-2961 — DCS System Rewrite Strategy
+**From:** "nalyze cloud2 monolith via project2context..." → **To:** "Analyze cloud2 monolith via project2context..."
+**By:** Carlos Hurtado
+
+---
+
+### 2026-04-29 18:20 - Created
+
+**Change:** Issue created and linked to parent ACA-2961
 **By:** Carlos Hurtado
 
 ---
@@ -162,19 +217,30 @@ Full scope and acceptance criteria written.
 | issuetype | Sub-task |
 | status | In Progress |
 | priority | Normal |
-| assignee | Carlos Hurtado (carlos.hurtado@inkaviation.com) |
-| reporter | Carlos Hurtado (carlos.hurtado@inkaviation.com) |
+| assignee | Carlos Hurtado |
+| reporter | Carlos Hurtado |
+| creator | Carlos Hurtado |
 | parent | ACA-2961 |
+| project | ACA (AI Coding Agency) |
 | labels | ink-monitor |
-| components | — |
-| fixVersions | — |
+| components | (none) |
+| customfield_10086 | Departure Control System (Desktop) - DCS |
+| customfield_10473 | Low |
+| created | 2026-04-29T18:20:06.325+0200 |
+| updated | 2026-04-29T18:49:49.830+0200 |
 | timeoriginalestimate | 21600 (6h) |
 | timeestimate | 21600 (6h) |
-| timespent | — |
-| created | 2026-04-29T18:20:06+0200 |
-| updated | 2026-04-29T18:49:49+0200 |
-| project | ACA — AI Coding Agency |
-| customfield_10086 | Departure Control System (Desktop) - DCS |
+| timespent | null |
+| workratio | 0 |
+| progress | 0% |
+| votes | 0 |
+| resolutiondate | null |
+| duedate | null |
+| environment | null |
+| security | null |
+| fixVersions | (none) |
+| customfield_10019 | 1\|i0g6vd: |
+| customfield_10000 | {} |
 
 ---
 
@@ -182,26 +248,27 @@ Full scope and acceptance criteria written.
 
 ### What needs to be done?
 
-Use the `project2context` MCP (connected to the cloud2 repository) to perform a comprehensive, code-grounded audit of the DCS monolith across 7 dimensions: structure, functional modules, multitenancy, third-party integrations, external dependencies, auth/authz, and inter-module dependencies. The output is a structured analysis document that becomes the foundation for the modular rewrite strategy.
+Perform an exhaustive audit of the cloud2 DCS PHP monolith using the `project2context` MCP tool. The deliverable is a structured analysis document covering: (1) general structure and framework patterns, (2) functional module identification with FE/BE/DB scope per module, (3) multitenancy model and per-client isolation mechanisms, (4) all third-party integrations with protocol/direction/criticality, (5) external library inventory with replacement notes, (6) auth/authz model and separability assessment, (7) inter-module dependency map with high-coupling hotspots flagged.
 
 ### Why is it important?
 
-This is the first sub-task of ACA-2961 (DCS System Rewrite Strategy). No rewrite planning can begin without this audit — it defines module boundaries, integration contracts, and migration complexity. Every claim in the output must be traceable to actual code.
+This is the **foundational input** for the entire DCS modular rewrite strategy (ACA-2961). The goal is to decompose the monolith into independently deployable, commercially sellable modules — each with defined FE (React), BE (API), and DB (schema ownership) scope. No claim in the rewrite strategy may be based on assumptions; every module boundary must be traceable to actual code in the repository.
 
 ### What to consider?
 
-- Use `project2context` MCP tools exclusively for code traversal — no assumptions allowed
-- The system is a multi-tenant DCS (Departure Control System) serving multiple airlines/airports
-- Pay special attention to: tenant isolation mechanisms, PSS/GDS integrations, and shared DB tables (highest rewrite risk)
-- Document every cross-module dependency — these become the migration hotspots
-- The `project2context` MCP is already configured in `.mcp.json`
+- Use `project2context` MCP exclusively — do not rely on assumptions or general PHP/Laravel patterns
+- The system is multitenant (multiple airlines/airports); isolation mechanism must be fully understood before module boundaries can be drawn
+- Third-party integrations (PSS, GDS, baggage, payments, identity providers) are critical and some may be tenant-specific
+- Auth/authz may be tightly coupled — assess extractability carefully
+- High-coupling hotspots in the inter-module map directly determine rewrite complexity and sequencing
+- This task is purely an analysis/document deliverable — no code changes
 
 ### What is NOT included?
 
-- Actual rewrite planning or architecture design (that's ACA-2961's scope)
-- Implementation of any new modules
-- Database migration scripts
-- Any code changes to cloud2
+- Module rewrite design or implementation
+- API contract definition for new modules
+- Migration roadmap (that belongs to subsequent tasks in ACA-2961)
+- Commercialization packaging decisions
 
 ---
 
@@ -209,7 +276,8 @@ This is the first sub-task of ACA-2961 (DCS System Rewrite Strategy). No rewrite
 
 **Relevant labels:** `ink-monitor`
 **Affected components:** Departure Control System (Desktop) - DCS
-**Product area:** `customfield_10086` = "Departure Control System (Desktop) - DCS"
+**Risk level:** Low
+**Estimate:** 6h
 
 **Useful links:**
 - [Jira Issue](https://inkinnovation.atlassian.net/browse/ACA-2962)

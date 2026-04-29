@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(ink:new)",
+      "Skill(ink:ticket)",
+      "Bash(node bin/ink-tools.js state set \"CurrentTicket\" \"ACA-2962\")",
+      "Bash(bash .claude/skills/ink-jira/jira-api.sh cleanup)",
+      "mcp__serena__activate_project",
+      "mcp__serena__check_onboarding_performed",
+      "mcp__serena__onboarding",
+      "mcp__serena__write_memory",
+      "mcp__project2context__list_repositories",
+      "mcp__project2context__query_classes",
+      "mcp__project2context__analyze_repository_structure",
+      "mcp__project2context__search_files",
+      "Skill(ink-jira)"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "context7",
+    "project2context",
+    "ink-kb-mcp",
+    "serena",
+    "ink-qa-rag",
+    "notebooklm"
+  ]
+}

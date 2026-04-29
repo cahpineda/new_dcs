@@ -1,0 +1,47 @@
+{
+  "mcpServers": {
+    "context7": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp@latest"
+      ]
+    },
+    "project2context": {
+      "type": "http",
+      "url": "https://sandbox.inkcloud.io/mcp?api_key=m0NAq6ro-QtS4FrUiSp7--nlsldpKbgG5DqJbe4DyiQ"
+    },
+    "ink-kb-mcp": {
+      "type": "http",
+      "url": "https://sandbox.inkcloud.io/kb/mcp",
+      "name": "Knowledge Base RAG",
+      "description": "RAG tools for querying the knowledge base"
+    },
+    "serena": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/oraios/serena",
+        "serena",
+        "start-mcp-server",
+        "--context",
+        "claude-code",
+        "--project-from-cwd",
+        "--open-web-dashboard",
+        "false"
+      ]
+    },
+    "ink-qa-rag": {
+      "type": "http",
+      "url": "https://sandbox.inkcloud.io/qa-rag/mcp?api_key=m0NAq6ro-QtS4FrUiSp7--nlsldpKbgG5DqJbe4DyiQ"
+    },
+    "notebooklm": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "notebooklm-mcp@latest"],
+      "description": "Personal NotebookLM RAG — citation-backed answers from your own documents"
+    }
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "project": {
+    "name": "${PROJECT_NAME}",
+    "version": "1.0.0"
+  },
+  "modelProfile": "intermediate",
+  "mode": "interactive",
+  "planningDepth": "standard",
+  "profiles": {
+    "intermediate": {
+      "description": "Balanced cost/quality: Sonnet for all roles, Opus for planning (~same cost as old haiku mix with Sonnet 4.6 pricing)",
+      "research": "sonnet",
+      "planning": "sonnet",
+      "execution": "sonnet",
+      "debug": "sonnet",
+      "verification": "sonnet"
+    },
+    "quality": {
+      "description": "Maximum quality, higher cost",
+      "research": "sonnet",
+      "planning": "opus",
+      "execution": "opus",
+      "verification": "sonnet"
+    },
+    "balanced": {
+      "description": "Balance of quality and cost (default)",
+      "research": "sonnet",
+      "planning": "opus",
+      "execution": "sonnet",
+      "verification": "sonnet"
+    },
+    "budget": {
+      "description": "Minimize cost, acceptable quality",
+      "research": "sonnet",
+      "planning": "sonnet",
+      "execution": "sonnet",
+      "verification": "sonnet"
+    }
+  },
+  "features": {
+    "parallelResearch": true,
+    "waveExecution": true,
+    "planChecker": false,
+    "executorAgent": true,
+    "maxConcurrentAgents": 3,
+    "autoWiringCheck": true,
+    "autoVerify": false,
+    "tdd": true
+  },
+  "contextBudgets": {
+    "orchestrator": 40,
+    "agent": 50
+  },
+  "memory": {
+    "enabled": true,
+    "autoBootstrap": true,
+    "include_extensions": ["*"],
+    "exclude_paths": [".planning/", "node_modules/", ".git/", "dist/", ".next/"],
+    "domain_mapping": {},
+    "tiers": {
+      "hot": {
+        "description": "Always loaded, updated every session",
+        "maxLines": 50,
+        "files": [".planning/memory/INDEX.md", ".planning/STATE.md"]
+      },
+      "warm": {
+        "description": "Loaded on-demand, updated weekly",
+        "maxLines": 300,
+        "files": [".planning/memory/chapters/CAP-*.md", ".planning/ROADMAP.md"]
+      },
+      "cold": {
+        "description": "Rarely accessed, read-only reference",
+        "maxLines": 1000,
+        "files": [".planning/phases/*/PLAN.md", ".planning/research/*.md"]
+      },
+      "archive": {
+        "description": "Historical record, never updated",
+        "maxLines": null,
+        "files": [".planning/archive/**/*.md", ".planning/memory/archive/**/*.md"]
+      }
+    },
+    "consolidation": {
+      "enabled": true,
+      "splitThreshold": 300,
+      "mergeThreshold": 50
+    }
+  }
+}
