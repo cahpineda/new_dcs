@@ -4,9 +4,34 @@
 
 Six sequential phases that progressively build a complete picture of the cloud2 DCS monolith using the `project2context` MCP. Each phase delivers a documented section of the final analysis, culminating in a structured architecture document that serves as the foundational input for the modular rewrite strategy (ACA-2961). All claims must be traceable to actual code.
 
-## Domain Expertise
+## Hallazgo Arquitectónico Crítico (2026-04-29)
 
-None
+**`departure_control_controller.class.php` es el núcleo del sistema DCS.**
+
+P2C confirma 24 archivos que referencian directamente este controlador:
+- `passenger.class.php` — `can_be_checked_in()`, `copy_from_passenger_for_transfer()`
+- `flight.class.php` — `get_boarding_groups_for_departure_control()`, carga de pasajeros
+- `seat_master.class.php`, `zone_balanced_seating.class.php` — asignación de asientos en contexto DCS
+- `crew_controller.class.php` — `get_departure_control_instance()`
+- `boarding_tab_controller.class.php` — vista de embarque usa el contexto DCS
+- `border_control_departure_controller.class.php` — control de frontera obtiene instancia DCS
+- `ajax_responder_controller.class.php` — `process_do_checkin()` opera bajo contexto DCS
+- `bq_departure_control_screen/session` — analytics de sesiones DCS
+- `touch_suite_handler_controller.class.php` — TouchSuite obtiene instancia DCS
+- `local_functions.php` — `is_departure_control_desk_request()` define el MODO de ejecución
+
+**Implicaciones para el análisis:**
+- El análisis de cada módulo debe iniciarse preguntando: "¿Cómo interactúa con `departure_control_controller`?"
+- `departure_control_controller` NO debe tratarse como un módulo más — es el **orquestador** del que dependen todos los demás módulos operacionales
+- Para la reescritura: `departure_control` debe ser el ÚLTIMO componente en migrarse, o debe existir como capa de orquestación desde el inicio
+- El **orden de reescritura** (Phase 5 output) debe organizar módulos de menor a mayor dependencia con `departure_control`
+
+**Núcleo de código (P2C export_core_network, 1,416 nodos, 3,843 edges):**
+- Nodo más conectado: `ws_passenger.class.php::validate_pax_attributes` (v1.3–v1.8, 132–142 conexiones) — el API WS es el hub técnico
+- `ink_cupps_broker.class.php::get_xml_event` (80 conexiones) — CUPPS como segundo hub
+- `departure_control_controller` aparece como hub de dominio (24 referencias directas) pero es menos conectado en el grafo técnico — confirma que es un orquestador de negocio, no un helper técnico
+
+## Domain Expertise
 
 ## Phases
 
@@ -33,11 +58,12 @@ Plans:
 **Goal**: Define candidate independent modules grounded in actual code groupings, each with documented FE/BE/DB scope.
 **Depends on**: Phase 1
 **Research**: Unlikely (uses Phase 1 structure map)
+**Architectural note**: `departure_control_controller` is the operational nucleus — it must receive special depth treatment in 02-02 and serve as the primary hotspot in 02-03. Every module's relationship to departure_control must be documented.
 
 Plans:
 - [ ] 02-01: Group controllers, models, and views by functional domain to identify candidate modules
-- [ ] 02-02: Document each candidate module: FE (views/templates/JS), BE (controllers/services/routes), DB (owned tables, shared tables, FK dependencies)
-- [ ] 02-03: Validate module boundaries — identify cross-cutting concerns and shared code
+- [ ] 02-02: Document each candidate module: FE (views/templates/JS), BE (controllers/services/routes), DB (owned tables, shared tables, FK dependencies) — **departure_control analyzed with extra depth as nucleus**
+- [ ] 02-03: Validate module boundaries — identify cross-cutting concerns and shared code — **departure_control is the primary hotspot; trace all 24 direct dependencies**
 
 ### Phase 3: Multitenancy & Auth Analysis
 **Goal**: Fully document how cloud2 isolates data across tenants and how authentication/authorization works, with separability assessment.
@@ -59,13 +85,14 @@ Plans:
 - [ ] 04-02: Document each integration: vendor name, protocol, flow direction, owning module, criticality, mandatory-vs-optional-per-tenant classification
 
 ### Phase 5: Dependencies & Inter-module Map
-**Goal**: Inventory all external dependencies (composer.json/package.json) with replacement notes, and produce a complete inter-module dependency map with high-coupling hotspots flagged.
+**Goal**: Inventory all external dependencies with replacement notes, and produce a complete inter-module dependency map with `departure_control_controller` as the center node. Hotspots flagged with migration order.
 **Depends on**: Phase 2
 **Research**: Unlikely (uses dependency manifests and module map from Phase 2)
+**Architectural note**: The dependency map must be built **outward from `departure_control_controller`** — modules that have no path to departure_control are candidates for early independent extraction.
 
 Plans:
-- [ ] 05-01: Review composer.json, package.json, and other manifests — identify business-critical libraries, flag restrictive licenses and deprecated/unmaintained packages
-- [ ] 05-02: Produce inter-module dependency map — catalogue cross-module dependencies, identify shared models/tables representing high coupling, flag high-risk hotspots with migration complexity notes
+- [ ] 05-01: Review dependency manifests (no composer.json found — focus on vendored libraries in includes/, voku_anti_xss/, xero/, attest_ios_libs/) — identify business-critical libraries and deprecated packages
+- [ ] 05-02: Produce inter-module dependency map centered on `departure_control_controller` — identify which modules can be extracted independently (no departure_control dependency) vs which require it; produce rewrite order sorted by departure_control coupling depth
 
 ### Phase 6: Analysis Document Assembly
 **Goal**: Compile all phase findings into the final structured analysis document covering all 7 scope dimensions. Verify all acceptance criteria are met.
