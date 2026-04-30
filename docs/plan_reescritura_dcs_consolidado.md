@@ -1,6 +1,6 @@
 # Plan Consolidado de Reescritura — DCS cloud_2
 
-**Fuentes:** ACA-2962 (análisis P2C) + plan_definitivo.md (arquitectura + graphify)  
+**Fuentes:** ACA-2962 (análisis P2C) + plan_definitivo.md (arquitectura + graphify) + Fase 7 (logging/auditoría)  
 **Fecha:** 2026-04-30 | **Estado:** Listo para revisión tech lead
 
 ---
@@ -408,6 +408,8 @@ Capa 4 — Plugin de código     (≈5%) — último recurso, review obligatorio
 | 13 | Cero deprecation de handlers legacy hasta 100% tráfico en handler nuevo ≥30 días | Operación |
 | **14** | **XCache resuelto (APCu) antes del primer flip** *(nuevo)* | Pre-work |
 | **15** | **CUPPS HAL interface definida antes de migrar cualquier módulo Level 2** *(nuevo)* | Arquitectura |
+| **16** | **Cero módulo en producción sin audit trail completo (Cat. A + B implementados y con tests)** *(nuevo)* | Auditoría |
+| **17** | **Si falla la escritura al audit log Cat. A, falla la operación — sin modo degradado** *(nuevo)* | Auditoría |
 
 ---
 
@@ -423,23 +425,179 @@ Capa 4 — Plugin de código     (≈5%) — último recurso, review obligatorio
 
 ---
 
-## 17. Ítems que requieren verificación manual antes de comenzar
+## 17. Estrategia de Logging y Auditoría
+
+> **Principio central**: Audit inmutable primero, observabilidad después. Ningún módulo puede liberarse a producción sin audit trail completo para sus eventos de categoría A y B.
+
+### 17.1 Estado actual en cloud_2 — gaps críticos
+
+cloud_2 **no tiene sistema de auditoría centralizado**. Los mecanismos existentes (BQHandler/BigQuery, tablas transaccionales, `user_session`) son analítica o persistencia de negocio — ninguno es un audit trail inmutable con semántica de append-only.
+
+**Los 10 gaps más críticos identificados:**
+
+| Gap | Severidad | Evento afectado |
+|---|---|---|
+| Sin gate override audit trail | **Crítico** | Supervisor autoriza embarque con restricción — sin registro |
+| Sin log de denegación de embarque | **Crítico** | Regulatorio (EU 261/2004 y equivalentes) |
+| Sin historial de asignación de asiento | **Crítico** | Doble asignación no detectable retroactivamente |
+| Sin log de APIS submission | **Crítico** | `border_movement` existe pero sin request+response+timestamp hacia el gobierno |
+| Sin audit de release de vuelo | **Crítico** | El evento de máxima criticidad del DCS sin registro |
+| Sin log histórico de login/logout | Alto | `user_session` es solo estado activo — no historial |
+| Sin actor en aprobación de loadsheet | Alto | Quien firma el W&B final no queda registrado |
+| Sin log de acceso fallido | Alto | Detección de intrusión imposible |
+| PII probable en BigQuery sin controles | Alto | `bq_imp_passenger_apis` — requiere verificación manual |
+| Sin `correlation_id` en ningún flujo | Alto | Imposible reconstruir una operación multi-módulo ante incidente |
+
+### 17.2 Arquitectura de logging — dos capas
+
+**Capa 1 — Audit Log Inmutable** (eventos regulatorios, operacionales críticos, seguridad de acceso)
+
+Tabla `audit_events` append-only en MySQL — DDL rechaza explícitamente UPDATE y DELETE:
+
+```sql
+CREATE TABLE audit_events (
+  id            BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  event_type    VARCHAR(64) NOT NULL,       -- enum versionado v1.0
+  entity_type   VARCHAR(64) NOT NULL,       -- 'passenger', 'flight', 'boarding_pass'...
+  entity_id     VARCHAR(128) NOT NULL,
+  actor_id      VARCHAR(64),               -- user_key del agente (NULL si sistema)
+  carrier_key   VARCHAR(16) NOT NULL,
+  station_id    VARCHAR(8),
+  correlation_id VARCHAR(36) NOT NULL,     -- UUID v4 propagado end-to-end
+  payload_json  JSON,                      -- PII cifrado at-rest para datos de pasajero
+  occurred_at   DATETIME(3) NOT NULL,      -- timestamp del cliente
+  ingested_at   DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)  -- timestamp del servidor
+) ENGINE=InnoDB;
+-- occurred_at ≠ ingested_at detecta manipulación de timestamps
+```
+
+Tablas satélite:
+- `apis_submission_log` — payload cifrado AES-256-GCM con KMS (retención legal por país)
+- `payment_audit_log` — PCI-DSS compliant (sin datos de tarjeta, solo transaction IDs)
+
+**Escritura**: síncrona y bloqueante para Cat. A (si falla el audit log, falla la operación). Asíncrona para Cat. B/C.
+
+**Capa 2 — Observabilidad / Diagnóstico** (errores de integración, performance, salud del sistema)
+
+BigQuery extendido sobre `BQHandler.php` existente. Logs estructurados JSON con `tenant_id`, `correlation_id`, `service`, `severity`. Retención rolling 30-90 días.
+
+### 17.3 Clasificación de eventos por categoría
+
+| Cat. | Nombre | Criterio | Destino | Inmutabilidad | Retención mínima |
+|---|---|---|---|---|---|
+| **A** | Regulatorio/Legal | Exigido por regulación aeronáutica o gobierno | `audit_events` + tablas satélite | Sí — escritura síncrona bloqueante | Legal por país (APIS: 5-7 años; financiero: 5-7 años) |
+| **B** | Operacional Crítico | Permite reconstruir el estado del vuelo ante un incidente | `audit_events` | Sí — append-only | 24 meses operacional |
+| **C** | Seguridad de Acceso | Autenticación, autorización, overrides | `audit_events` | Sí | 12-24 meses |
+| **D** | Diagnóstico | Debugging, salud del sistema, integraciones | BigQuery (Capa 2) | No | 30-90 días rolling |
+
+**Muestra de eventos por categoría:**
+
+| Evento | Cat. | Ola |
+|---|---|---|
+| Envío a APIS/Gobierno + respuesta | A | Ola 4 |
+| Transacción de pago / reembolso | A | Ola 4 |
+| Loadsheet aprobado por supervisor | A | Ola 4 |
+| Denegación de embarque | A | Ola 3B |
+| Check-in transaction completa con actor | B | Ola 3B |
+| Boarding pass emitido/anulado | B | Ola 3B |
+| Gate override por supervisor | B | Ola 3B |
+| Asignación/cambio de asiento | B | Ola 3B |
+| Tag de equipaje creado | B | Ola 2 |
+| Release de vuelo | B | Ola 5 |
+| Login/logout de agente con IP y station | C | Pre-work (Auth Service) |
+| Token JWT emitido/revocado | C | Pre-work (Auth Service) |
+| Acceso fallido | C | Pre-work (Auth Service) |
+| Error de integración CUPPS/SITA | D | Desde Ola 0 |
+
+### 17.4 Correlation ID — trazabilidad end-to-end
+
+Cada operación que cruza módulos propaga un `correlation_id` (UUID v4):
+- Generado en el entry point de la operación
+- Propagado via `$_SESSION['correlation_id']` en legacy PHP
+- Propagado via `X-Correlation-Id` HTTP header en el nuevo sistema
+- Ambos sistemas escriben al mismo `audit_events` central
+- Permite reconstruir un flujo completo aunque cruce de legacy a nuevo en mitad de la operación
+
+### 17.5 PII handling
+
+- `payload_json` en `audit_events`: solo identificadores internos (`passenger_key`, `pnr`) — nunca datos raw
+- Payload APIS en `apis_submission_log`: cifrado AES-256-GCM con KMS — acceso solo para compliance tool
+- Logs de diagnóstico (Cat. D / BigQuery): PII completamente excluida
+- Para investigaciones que necesitan datos personales: join controlado contra tabla `passenger` con acceso separado
+
+### 17.6 Pre-work de logging (antes de Ola 0)
+
+10 tareas de pre-work (~2-3 semanas, paralelizables con el diseño de Ola 0):
+
+| # | Tarea | Bloqueante para |
+|---|---|---|
+| PW-LOG-1 | Crear tabla `audit_events` + DDL con restricciones append-only | Todo |
+| PW-LOG-2 | Implementar `AuditLoggerInterface` con 33 `EventType` v1.0 | Todo |
+| PW-LOG-3 | Implementar `LegacyAuditLogger` PHP puro integrado en `load_session()` | Primer flip |
+| PW-LOG-4 | Crear tablas satélite `apis_submission_log` y `payment_audit_log` | Ola 4 |
+| PW-LOG-5 | Implementar propagación de `correlation_id` en routing proxy | Ola 0 |
+| PW-LOG-6 | Extender `BQHandler.php` con schema estructurado Cat. D | Ola 0 |
+| PW-LOG-7 | Definir retención policies y configurar compactación BigQuery | Ola 0 |
+| PW-LOG-8 | Implementar KMS para cifrado at-rest de `apis_submission_log` | Ola 4 |
+| PW-LOG-9 | Crear tests de auditoría base (verificar que operación X produce evento Y) | Primer flip |
+| PW-LOG-10 | Documentar `EventType` enum como contrato versionado — changelog obligatorio | Todo |
+
+### 17.7 Checklist de pre-release por módulo (gate bloqueante)
+
+Ningún módulo puede ir a producción sin cumplir estos 11 items:
+
+- [ ] Todos los eventos Cat. A del módulo implementados y escribiendo a `audit_events`
+- [ ] Todos los eventos Cat. B del módulo implementados
+- [ ] `correlation_id` incluido en todos los eventos del módulo
+- [ ] Tests de auditoría: operación X → produce audit event Y → con campos Z
+- [ ] PII excluida de logs Cat. D (BigQuery)
+- [ ] `actor_id` presente en todos los eventos donde existe un agente humano
+- [ ] Retention policy configurada para cada destino de cada categoría
+- [ ] `apis_submission_log` con payload cifrado si el módulo envía a gobierno
+- [ ] `payment_audit_log` completo si el módulo procesa pagos
+- [ ] Gate override de supervisor produce evento Cat. B (si aplica al módulo)
+- [ ] Tests de cross-tenant: eventos de carrier A no son visibles para carrier B
+
+### 17.8 Logging por ola de reescritura
+
+| Ola | Módulos | Eventos audit obligatorios |
+|---|---|---|
+| **Pre-work** | Auth Service | Login/logout (C), token emitido/revocado (C), acceso fallido (C) |
+| **Ola 0** | Servicios compartidos, CUPPS HAL | Errores de periférico (D), reconexiones (D) |
+| **Ola 1** | FIDS, Vehicles, Health, Turnaround | Asignación de vehículo (B), sin eventos críticos restantes |
+| **Ola 2** | Baggage+SSBD, WS API | Tag creado (B), reconciliación SITA (A+B), bag drop (B) |
+| **Ola 3A** | CUPPS, CUSS | Check-in en kiosk (B), boarding pass emitido en kiosk (B) |
+| **Ola 3B** | Check-in, Boarding, Seating, Passenger | Check-in con actor (B), boarding pass (B), **gate override (B)**, **denegación embarque (A)**, asignación asiento (B) |
+| **Ola 4** | W&B/AHM, APIS/Border, Financial | **Loadsheet aprobado (A)**, **APIS submission (A)**, pago/reembolso (A) |
+| **Ola 5** | Flight Management, Departure Control | Cambio estado vuelo (B), **release de vuelo (B)**, cierre DCS session (B) |
+
+---
+
+## 18. Ítems que requieren verificación manual antes de comenzar
 
 1. **gRPC target**: `includes/grpc/` — ¿qué servicio externo consumen estos stubs? No identificado.
 2. **Twilio**: controlador específico no localizado — confirmar módulo propietario.
 3. **Roles RBAC**: lista completa de roles definidos en `user_role` — requiere consulta a DB.
 4. **Versiones de ws_class activas**: cuáles de las 12 variantes tienen tráfico real de producción.
 5. **gRPC y WebSocket en DC**: si `includes/grpc/` apunta a un servicio externo que Departure Control necesita, este es un blocker no documentado para Ola 5.
+6. **PII en BigQuery**: verificar campos de `bq_imp_passenger_apis` — posible exposición de datos personales sin controles.
+7. **`financial_transaction` schema**: verificar campos completos para assessment PCI-DSS.
+8. **`cupps_logging_application` y `timatic_transaction`**: verificar schema en repositorio — posible valor como audit records existentes.
 
 ---
 
-## 18. Resumen ejecutivo
+## 19. Resumen ejecutivo
 
-**Plan consolidado = análisis de dominio (ACA-2962: 15 módulos, 25+ integraciones, multitenancy, auth) + arquitectura de migración (plan_definitivo: orchestrator iterativo, 5 capas de customización, verifiers 6/6 y 8/8, autonomía L4–L5).**
+**Plan consolidado = análisis de dominio (ACA-2962: 15 módulos, 25+ integraciones, multitenancy, auth) + arquitectura de migración (plan_definitivo: orchestrator iterativo, 5 capas de customización, verifiers 6/6 y 8/8, autonomía L4–L5) + estrategia de logging/auditoría (Fase 7: 43 eventos clasificados, arquitectura 2 capas, 11 gates de pre-release).**
 
 La migración tiene dos god nodes que dicen cuándo termina: cuando el LOC de `departure_control_controller` llega a 0 y cuando `.row()` reach decae a 0 — ambos como consecuencia de las features migradas, no como objetivos directos de refactor.
 
-**Comenzar por Ola 0** (servicios compartidos) antes de cualquier extracción modular. El primer flip productivo recomendado es `GET /api/1.8/flight/block_seats` (Tier B0, pilot validado). **XCache → APCu es pre-work urgente** — posible bug activo en producción que bloquea cualquier otra acción.
+**Orden de acción inmediata antes del primer flip:**
+1. **XCache → APCu** — posible bug activo en PHP 8.2 que bloquea todo lo demás
+2. **Pre-work de logging** (~2-3 semanas) — `audit_events`, `AuditLoggerInterface`, `correlation_id`, `LegacyAuditLogger`
+3. **Auth Service** — primer emisor de eventos Cat. C; sin él ningún evento tiene `actor_id` confiable
+4. **Ola 0** — servicios compartidos (Passenger Core, Flight Data, Boarding Pass, Seat, CUPPS HAL)
+5. **Primer flip productivo**: `GET /api/1.8/flight/block_seats` (Tier B0, pilot validado)
 
 La migración termina cuando:
 - Los 92 endpoints sirven desde handlers nuevos con ≥30 días sin rollbacks
@@ -447,9 +605,10 @@ La migración termina cuando:
 - ≥75% de customizaciones viven en Capa 0–2
 - `departure_control_controller` tiene 0 LOC restante
 - Graph cohesion aumenta consistentemente
+- **Todos los módulos tienen audit trail Cat. A y B implementado y verificado en producción**
 
 Hasta entonces, cloud_2 corre como fallback. El orchestrator descubre la realidad iterativamente — el grafo de graphify alimenta directamente el risk_classifier y el code_analyzer.
 
 ---
 
-*Artefactos de referencia: `.planning/phases/` (ACA-2962) | `docs/plan_definitivo.md` (plan original)*
+*Artefactos de referencia: `.planning/phases/` (ACA-2962) | `docs/plan_definitivo.md` (plan original) | `.planning/phases/7-logging-auditing-strategy/LOGGING-AUDITORIA.md`*
