@@ -107,69 +107,111 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Repository Structure & Framework Analysis | 0/2 | Not started | - |
-| 2. Functional Module Identification | 0/3 | Not started | - |
-| 3. Multitenancy & Auth Analysis | 0/2 | Not started | - |
-| 4. Third-party Integrations Catalogue | 0/2 | Not started | - |
-| 5. Dependencies & Inter-module Map | 0/2 | Not started | - |
-| 6. Analysis Document Assembly | 0/2 | Not started | - |
+| 1. Repository Structure & Framework Analysis | 2/2 | ✅ Complete | 2026-04-29 |
+| 2. Functional Module Identification | 3/3 | ✅ Complete | 2026-04-29 |
+| 3. Multitenancy & Auth Analysis | 2/2 | ✅ Complete | 2026-04-29 |
+| 4. Third-party Integrations Catalogue | 2/2 | ✅ Complete | 2026-04-29 |
+| 5. Dependencies & Inter-module Map | 2/2 | ✅ Complete | 2026-04-29 |
+| 6. Analysis Document Assembly | 2/2 | ✅ Complete | 2026-04-29 |
+| 7. Logging & Auditing Strategy | 1/1 | ✅ Complete | 2026-04-30 |
+
+**Overall: 14/14 plans complete — análisis ACA-2962 finalizado.**
+
 ---
 
-### Phase 1: repository-structure-framework-analysis
+### Phase 1: repository-structure-framework-analysis ✅
 
-**Goal:** [To be planned]
+**Goal:** Documentar estructura del repositorio, stack tecnológico, patrones arquitectónicos y puntos de entrada del DCS.
 
-**Plans:** 0 plans
+**Key outputs:** `ESTRUCTURA-REPO.md`, `FRAMEWORK.md`, `PUNTOS-ENTRADA.md`
+
+**Key findings:** PHP 8.2+ sin framework estándar. MVC custom. Slim solo en `rest/index.php`. XCache obsoleto en `ink_autoload()` — posible bug activo en PHP 8.2. 200+ controladores legacy en `includes/`. 10 entry points identificados.
 
 Plans:
-- [ ] TBD (run /ink:plan-phase 1 to break down)
+- [x] 01-01: Traversal de estructura, directorios, clases, entry points
+- [x] 01-02: Framework, stack, patrones arquitectónicos, convenciones
+
 ---
 
-### Phase 2: functional-module-identification
+### Phase 2: functional-module-identification ✅
 
-**Goal:** [To be planned]
+**Goal:** Identificar módulos funcionales con límites claros y scope FE/BE/DB por módulo.
 
-**Plans:** 0 plans
+**Key outputs:** `MODULOS-CANDIDATOS.md`, `SCOPE-MODULOS.md`, `LIMITES-MODULOS.md`
+
+**Key findings:** 15 módulos + co-núcleo (DC + Flight Management). SSBD fusionado en Baggage/BRS. Clasificación Level 0/1/2/Núcleo por acoplamiento con `departure_control_controller`. 3 dependencias circulares. 5 shared services necesarios antes de cualquier extracción Level 2.
 
 Plans:
-- [ ] TBD (run /ink:plan-phase 2 to break down)
+- [x] 02-01: Agrupación de controladores por dominio funcional
+- [x] 02-02: Scope FE/BE/DB por módulo (tablas propias, compartidas, FK)
+- [x] 02-03: Validación de límites, dependencias cruzadas, hotspots
+
 ---
 
-### Phase 3: multitenancy-auth-analysis
+### Phase 3: multitenancy-auth-analysis ✅
 
-**Goal:** [To be planned]
+**Goal:** Documentar mecanismo de multitenancy y sistema de auth/authz con evaluación de separabilidad.
 
-**Plans:** 0 plans
+**Key outputs:** `MULTITENANCY.md`, `AUTH.md`
+
+**Key findings:** Shared DB Row-Level Isolation via `get_current_company_key($_SERVER['SERVER_NAME'])`. 11+ tenants en `webci/`. RBAC custom con 7 tablas. `load_session()` en 156+ controladores — no separable sin refactor de middleware. `user_token` es el seed para auth moderna.
 
 Plans:
-- [ ] TBD (run /ink:plan-phase 3 to break down)
+- [x] 03-01: Mecanismo de tenant isolation, variaciones por cliente
+- [x] 03-02: Flujo de auth, roles, permisos, separabilidad
+
 ---
 
-### Phase 4: third-party-integrations-catalogue
+### Phase 4: third-party-integrations-catalogue ✅
 
-**Goal:** [To be planned]
+**Goal:** Catálogo completo de integraciones externas con protocolo, flujo y criticidad.
 
-**Plans:** 0 plans
+**Key outputs:** `INTEGRACIONES-DESCUBIERTAS.md`, `CATALOGO-INTEGRACIONES.md`
+
+**Key findings:** 25+ integraciones (19 con ficha completa). Alta criticidad: CUPPS/CUTE (80 conexiones), SITA BaggageService SOAP (91 stubs WSDL), APIS/Gobierno (regulatorio), WS API (12 variantes). gRPC (`includes/grpc/`) sin target identificado — requiere verificación.
 
 Plans:
-- [ ] TBD (run /ink:plan-phase 4 to break down)
+- [x] 04-01: Descubrimiento de integraciones vía P2C
+- [x] 04-02: Catálogo completo con protocolo, flujo, módulo, criticidad
+
 ---
 
-### Phase 5: dependencies-intermodule-map
+### Phase 5: dependencies-intermodule-map ✅
 
-**Goal:** [To be planned]
+**Goal:** Inventario de dependencias externas y mapa completo de dependencias inter-módulos con hotspots.
 
-**Plans:** 0 plans
+**Key outputs:** `DEPENDENCIAS-EXTERNAS.md`, `MAPA-DEPENDENCIAS-INTERMODULO.md`
+
+**Key findings:** Sin composer.json — todo vendorizado in-tree. 58 dependencias inter-módulo documentadas. 9 hotspots (`.row()` deg=16,611 es el hub de código real). Orden de reescritura en 5 olas definido. `scheduled_flight` y `passenger` como tablas de mayor acoplamiento (12+ y 9+ módulos respectivamente).
 
 Plans:
-- [ ] TBD (run /ink:plan-phase 5 to break down)
+- [x] 05-01: Inventario de dependencias externas PHP/JS
+- [x] 05-02: Mapa inter-módulos, tablas compartidas, hotspots, orden de reescritura
+
 ---
 
-### Phase 6: analysis-document-assembly
+### Phase 6: analysis-document-assembly ✅
 
-**Goal:** [To be planned]
+**Goal:** Ensamblar documento final que responde todos los criterios de aceptación de ACA-2962.
 
-**Plans:** 0 plans
+**Key outputs:** `ANALISIS-CLOUD2.md`, `AC-CHECKLIST.md`, `INDICE-ARTEFACTOS.md`
+
+**Key findings:** 8/9 criterios de aceptación cumplidos. Criterio 9 (aprobación tech lead) pendiente de acción humana. Documento consolidado + informe de cotejo contra `plan_definitivo.md` generados en `docs/`.
 
 Plans:
-- [ ] TBD (run /ink:plan-phase 6 to break down)
+- [x] 06-01: Ensamblaje del documento de análisis (8 secciones + Apéndice)
+- [x] 06-02: Verificación AC, cierre de brechas, índice de artefactos
+---
+
+### Phase 7: logging-auditing-strategy ✅
+
+**Goal:** Auditar el estado actual de logging/auditoría en cloud_2, identificar gaps críticos, y definir la estrategia completa de logging y auditoría para el sistema reescrito. Ningún módulo puede liberarse a producción sin audit trail completo.
+
+**Depends on:** Phase 6
+
+**Key outputs:** `LOGGING-AUDITORIA.md`
+
+**Key findings:** cloud_2 no tiene sistema de auditoría centralizado. 10 gaps críticos identificados — los más graves: gate override de supervisor sin registro, denegación de embarque sin log, doble asignación de asiento sin historial, APIS submission sin log dedicado, release de vuelo sin audit. Estrategia de 2 capas definida: `audit_events` append-only (Cat. A/B/C) + BigQuery Cat. D. 43 eventos clasificados, 11 gates de pre-release por módulo. Pre-work de logging (~2-3 semanas) necesario antes de Ola 0.
+
+Plans:
+- [x] 07-01: Auditar logging actual + clasificar requisitos + definir estrategia 2 capas + mapear por módulo/ola
